@@ -7,7 +7,8 @@ from geopy.distance import geodesic
 from .models import Restaurant, MenuItem, Category, RestaurantReview
 from .serializers import (
     RestaurantListSerializer, RestaurantDetailSerializer,
-    MenuItemSerializer, CategorySerializer, RestaurantReviewSerializer, RestaurantCreateSerializer
+    MenuItemSerializer, CategorySerializer, RestaurantReviewSerializer, RestaurantCreateSerializer,
+    MenuItemBulkCreateSerializer
 )
 from apps.authentication.models import User
 from ..core.permissions import IsRestaurantOwner
@@ -147,16 +148,63 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(popular_restaurants, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], url_path='user/(?P<user_id>\d+)/restaurants')
+    def user_restaurants(self, request, user_id=None):
+        """
+        Récupère tous les restaurants associés à un utilisateur (propriétaire)
+        """
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"message": "Utilisateur non trouvé"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-class MenuItemViewSet(viewsets.ReadOnlyModelViewSet):
+        restaurants = self.queryset.filter(owner=user)
+        serializer = RestaurantListSerializer(restaurants, many=True)
+
+        return Response({
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            },
+            "restaurants": serializer.data,
+            "count": restaurants.count()
+        })
+
+
+class MenuItemViewSet(viewsets.ModelViewSet):  # Changé en ModelViewSet
+    queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['restaurant', 'category', 'is_available']
     search_fields = ['name', 'description']
-    permissions_classes = [permissions.AllowAny]
+    permission_classes = [permissions.AllowAny]
 
-    def get_queryset(self):
-        return MenuItem.objects.filter(is_available=True)
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.IsAuthenticated(), IsRestaurantOwner()]
+        return super().get_permissions()
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return MenuItemBulkCreateSerializer
+        return super().get_serializer_class()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_bulk_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_bulk_create(self, serializer):
+        menu_items = serializer.save()
+        return Response({
+            "message": f"{len(menu_items)} menus créés avec succès",
+            "created_items": MenuItemSerializer(menu_items, many=True).data
+        })
 
     @action(detail=False, methods=['get'], url_path='user/(?P<user_id>\d+)/menus')
     def user_menus(self, request, user_id=None):
@@ -194,7 +242,7 @@ class MenuItemViewSet(viewsets.ReadOnlyModelViewSet):
             "total_items": menu_items.count()
         })
 
-    @action(detail=False, methods=['get'], url_path='user/(?P<user_id>\d+)/menus')
+    @action(detail=False, methods=['get'], url_path=r'user/(?P<user_id>\d+)/menus')
     def user_menus(self, request, user_id=None):
         """
         Récupère tous les menus des restaurants d'un propriétaire

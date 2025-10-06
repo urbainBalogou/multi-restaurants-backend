@@ -80,3 +80,40 @@ class RestaurantCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Seuls les restaurateurs peuvent créer/modifier des restaurants")
         return data
 
+
+class BulkCreateListSerializer(serializers.ListSerializer):
+    def create(self, validated_data):
+        # Extraction des restaurants vérifiés
+        restaurants = {
+            data['restaurant_id']: Restaurant.objects.get(id=data['restaurant_id'])
+            for data in validated_data
+        }
+
+        # Création des menu items en bulk
+        items = [
+            MenuItem(
+                restaurant=restaurants[data['restaurant_id']],
+                **{k: v for k, v in data.items() if k != 'restaurant_id'}
+            ) for data in validated_data
+        ]
+
+        return MenuItem.objects.bulk_create(items)
+
+
+class MenuItemBulkCreateSerializer(serializers.ModelSerializer):
+    restaurant_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = MenuItem
+        fields = '__all__'
+        list_serializer_class = BulkCreateListSerializer
+
+    def validate_restaurant_id(self, value):
+        # Vérifie que le restaurant appartient à l'utilisateur
+        if not Restaurant.objects.filter(id=value, owner=self.context['request'].user).exists():
+            raise serializers.ValidationError("Vous n'êtes pas propriétaire de ce restaurant")
+        return value
+
+
+
+
