@@ -54,7 +54,6 @@ class RestaurantViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'create':
-            print("données: ", self.request.data)
             return RestaurantCreateSerializer
         elif self.action == 'list':
             return RestaurantListSerializer
@@ -204,42 +203,6 @@ class MenuItemViewSet(viewsets.ModelViewSet):  # Changé en ModelViewSet
         return Response({
             "message": f"{len(menu_items)} menus créés avec succès",
             "created_items": MenuItemSerializer(menu_items, many=True).data
-        })
-
-    @action(detail=False, methods=['get'], url_path='user/(?P<user_id>\d+)/menus')
-    def user_menus(self, request, user_id=None):
-        """
-        Récupère tous les menus des restaurants d'un propriétaire
-        """
-        try:
-            user = User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return Response(
-                {"message": "Utilisateur non trouvé"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Vérifier si l'utilisateur est un propriétaire de restaurant
-        restaurants = Restaurant.objects.filter(owner=user, is_active=True)
-        if not restaurants.exists():
-            return Response(
-                {"message": "Cet utilisateur n'est pas propriétaire de restaurant"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Récupérer tous les menus des restaurants du propriétaire
-        menu_items = MenuItem.objects.filter(
-            restaurant__in=restaurants,
-            is_available=True
-        ).select_related('restaurant', 'category')
-
-        serializer = self.get_serializer(menu_items, many=True)
-
-        return Response({
-            "owner": user.get_full_name() or user.username,
-            "restaurant_count": restaurants.count(),
-            "menu_items": serializer.data,
-            "total_items": menu_items.count()
         })
 
     @action(detail=False, methods=['get'], url_path=r'user/(?P<user_id>\d+)/menus')
