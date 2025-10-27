@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'apps.restaurants',
     'apps.commandes',
     'apps.promotions',
+    'apps.marketing',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',

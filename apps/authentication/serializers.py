@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, DriverProfile, CustomerProfile
 from django.contrib.auth import authenticate
 from django.db import models
 import logging
@@ -137,3 +137,91 @@ class RegisterSerializer(serializers.ModelSerializer):
         except Exception as e:
             logger.error(f"❌ Erreur lors de la création: {e}")
             raise ValidationError(f"Erreur de création: {str(e)}")
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Serializer standard pour User"""
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'user_type', 'phone_number', 'address', 'latitude', 'longitude',
+            'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class DriverProfileSerializer(serializers.ModelSerializer):
+    """Serializer pour le profil des livreurs"""
+    user = UserSerializer(read_only=True)
+    restaurant_name = serializers.CharField(source='managed_by_restaurant.name', read_only=True, allow_null=True)
+    is_independent = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = DriverProfile
+        fields = [
+            'id', 'user', 'managed_by_restaurant', 'restaurant_name',
+            'vehicle_type', 'license_plate', 'status', 'is_available',
+            'current_latitude', 'current_longitude',
+            'driver_license_number', 'driver_license_photo', 'id_card_photo',
+            'vehicle_insurance', 'average_rating', 'total_ratings',
+            'total_deliveries', 'total_tips', 'total_earnings',
+            'max_delivery_distance_km', 'preferred_zones', 'availability_schedule',
+            'is_independent'
+        ]
+        read_only_fields = [
+            'average_rating', 'total_ratings', 'total_deliveries',
+            'total_tips', 'total_earnings'
+        ]
+
+
+class DriverProfileCreateSerializer(serializers.ModelSerializer):
+    """Serializer pour créer un profil de livreur"""
+    username = serializers.CharField(write_only=True)
+    email = serializers.EmailField(write_only=True)
+    password = serializers.CharField(write_only=True, min_length=8)
+    first_name = serializers.CharField(write_only=True, required=False)
+    last_name = serializers.CharField(write_only=True, required=False)
+    phone_number = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = DriverProfile
+        fields = [
+            'username', 'email', 'password', 'first_name', 'last_name',
+            'phone_number', 'managed_by_restaurant', 'vehicle_type',
+            'license_plate', 'driver_license_number', 'driver_license_photo',
+            'id_card_photo', 'vehicle_insurance', 'max_delivery_distance_km',
+            'preferred_zones', 'availability_schedule'
+        ]
+
+    def create(self, validated_data):
+        # Extraire les données utilisateur
+        user_data = {
+            'username': validated_data.pop('username'),
+            'email': validated_data.pop('email'),
+            'password': validated_data.pop('password'),
+            'first_name': validated_data.pop('first_name', ''),
+            'last_name': validated_data.pop('last_name', ''),
+            'phone_number': validated_data.pop('phone_number'),
+            'user_type': 'driver',
+        }
+
+        # Créer l'utilisateur
+        password = user_data.pop('password')
+        user = User.objects.create_user(**user_data, password=password)
+
+        # Créer le profil livreur
+        driver_profile = DriverProfile.objects.create(user=user, **validated_data)
+
+        logger.info(f"✅ Livreur créé: {user.username} (Restaurant: {driver_profile.managed_by_restaurant})")
+
+        return driver_profile
+
+
+class CustomerProfileSerializer(serializers.ModelSerializer):
+    """Serializer pour le profil des clients"""
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = CustomerProfile
+        fields = ['id', 'user', 'delivery_addresses', 'favorite_restaurants']
