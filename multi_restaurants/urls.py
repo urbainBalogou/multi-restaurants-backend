@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/v1/', include('apps.commandes.urls')),
     path('api/v1/', include('apps.promotions.urls')),
     path('api/v1/livraison/', include('apps.livraison.urls')),
+    path('api/v1/marketing/', include('apps.marketing.urls')),
 
     # Health check
     path('api/v1/health/', lambda request: JsonResponse({'status': 'healthy', 'timestamp': timezone.now().isoformat()})),
