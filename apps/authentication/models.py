@@ -44,6 +44,17 @@ class DriverProfile(models.Model):
     current_latitude = models.FloatField(null=True, blank=True)
     current_longitude = models.FloatField(null=True, blank=True)
 
+    # Ratings
+    average_rating = models.FloatField(default=0.0, verbose_name="Note moyenne")
+    total_ratings = models.IntegerField(default=0, verbose_name="Nombre d'évaluations")
+    total_deliveries = models.IntegerField(default=0, verbose_name="Nombre de livraisons")
+
+    # Revenus
+    total_tips = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Total pourboires")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_vehicle_type_display()}"
+
 
 
 
