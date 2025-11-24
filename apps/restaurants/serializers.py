@@ -65,15 +65,29 @@ class RestaurantReviewSerializer(serializers.ModelSerializer):
 
 # Dans serializers.py
 class RestaurantCreateSerializer(serializers.ModelSerializer):
+    # Accepter 'restaurant_image' depuis Flutter et mapper vers 'image'
+    restaurant_image = serializers.ImageField(write_only=True, required=False, allow_null=True)
+
     class Meta:
         model = Restaurant
         fields = [
-            'name', 'description', 'address', 'latitude', 'longitude',
+            'name', 'description', 'image', 'address', 'latitude', 'longitude',
             'phone_number', 'email', 'opening_hours', 'delivery_fee',
             'free_delivery_threshold', 'delivery_radius_km',
-            'estimated_delivery_time', 'is_accepting_orders'
+            'estimated_delivery_time', 'is_accepting_orders', 'restaurant_image'
         ]
         read_only_fields = ('owner', 'average_rating', 'total_reviews', 'is_active')
+        extra_kwargs = {
+            'image': {'required': False, 'allow_null': True},
+            'phone_number': {'required': True},
+        }
+
+    def create(self, validated_data):
+        # Gérer le champ restaurant_image envoyé par Flutter
+        restaurant_image = validated_data.pop('restaurant_image', None)
+        if restaurant_image:
+            validated_data['image'] = restaurant_image
+        return super().create(validated_data)
 
     def validate(self, data):
         if self.context['request'].user.user_type != 'restaurant':

@@ -6,7 +6,7 @@ from .models import (
     NewsletterSubscription,
     PushNotificationCampaign
 )
-from apps.restaurants.serializers import RestaurantSerializer
+from apps.restaurants.serializers import RestaurantDetailSerializer
 from apps.authentication.serializers import UserSerializer
 
 

@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
-from phonenumber_field.modelfields import PhoneNumberField
 from django.conf import settings
 User = get_user_model()
 
@@ -14,7 +13,7 @@ class Restaurant(models.Model):
     address = models.TextField()
     latitude = models.FloatField()
     longitude = models.FloatField()
-    phone_number = PhoneNumberField()
+    phone_number = models.CharField(max_length=20)
     email = models.EmailField(blank=True)
 
     # Horaires (format JSON pour flexibilité)

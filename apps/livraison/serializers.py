@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import DeliveryTracking, DeliveryZone
 from apps.commandes.serializers import OrderListSerializer
-from apps.restaurants.serializers import RestaurantSerializer
+from apps.restaurants.serializers import RestaurantListSerializer
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -45,7 +45,7 @@ class DeliveryTrackingUpdateSerializer(serializers.ModelSerializer):
 
 
 class DeliveryZoneSerializer(serializers.ModelSerializer):
-    restaurant = RestaurantSerializer(read_only=True)
+    restaurant = RestaurantListSerializer(read_only=True)
 
     class Meta:
         model = DeliveryZone

@@ -160,7 +160,8 @@ class RestaurantViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        restaurants = self.queryset.filter(owner=user)
+        # Pour le propriétaire, on affiche TOUS ses restaurants (actifs et inactifs)
+        restaurants = Restaurant.objects.filter(owner=user)
         serializer = RestaurantListSerializer(restaurants, many=True)
 
         return Response({
@@ -218,18 +219,20 @@ class MenuItemViewSet(viewsets.ModelViewSet):  # Changé en ModelViewSet
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Vérifier si l'utilisateur est un propriétaire de restaurant
-        restaurants = Restaurant.objects.filter(owner=user, is_active=True)
+        # Récupérer tous les restaurants du propriétaire (actifs ou non)
+        restaurants = Restaurant.objects.filter(owner=user)
         if not restaurants.exists():
-            return Response(
-                {"message": "Cet utilisateur n'est pas propriétaire de restaurant"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            # Retourner une liste vide au lieu d'une erreur
+            return Response({
+                "owner": user.get_full_name() or user.username,
+                "restaurant_count": 0,
+                "menu_items": [],
+                "total_items": 0
+            })
 
-        # Récupérer tous les menus des restaurants du propriétaire
+        # Récupérer TOUS les menus des restaurants du propriétaire (disponibles ou non)
         menu_items = MenuItem.objects.filter(
-            restaurant__in=restaurants,
-            is_available=True
+            restaurant__in=restaurants
         ).select_related('restaurant', 'category')
 
         serializer = self.get_serializer(menu_items, many=True)
